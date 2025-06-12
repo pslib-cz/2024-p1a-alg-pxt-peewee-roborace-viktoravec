@@ -42,7 +42,7 @@ radio.onReceivedString(function (receivedString: string) {
                 basic.pause(50);
                 music.playTone(1000, 200);
                 basic.pause(50);
-                music.playTone(1200, 200);
+                music.playTone(1200, 600);
                 basic.pause(100);
                 basic.clearScreen()
             }
@@ -224,4 +224,6 @@ basic.forever(function () {
         };
     };
 });
+
+
 
