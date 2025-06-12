@@ -4,21 +4,32 @@ let normalMode: boolean = true;
 let autoMode: boolean = false;
 let autoSong: boolean = true;
 let lastAutoDrive: number = 0;
+let lastTilt: number = 0
+let turning: boolean = false;
 
 radio.on();
 radio.setFrequencyBand(50);
 radio.setGroup(128);
 
 radio.onReceivedString(function (receivedString: string) {
+    let parts = receivedString.split(",")
+
     if (receivedString == "start") {
         ready = true
         return;
     };
 
-    let parts = receivedString.split(",")
-
-    if (parts.length == 5) {
+    if (parts.length === 5) {
         let autoDrive = parseFloat(parts[4]);
+        let naklonX = parseFloat(parts[0]);
+        let naklonY = parseFloat(parts[1]);
+
+        naklonX = Math.constrain(naklonX, -1023, 1023);
+        naklonY = Math.constrain(naklonY, -1023, 1023);
+
+        let speed = Math.map(naklonX, -1023, 1023, -256, 256);
+        let turn = Math.map(naklonY, -1023, 1023, -256, 256);
+        lastTilt = speed;
 
         if (autoDrive == 1 && lastAutoDrive == 0) {
             if (autoSong == true) {
@@ -54,15 +65,8 @@ radio.onReceivedString(function (receivedString: string) {
         lastAutoDrive = autoDrive;
 
         if (ready && normalMode) {
-            let naklonX = parseFloat(parts[0]);
-            let naklonY = parseFloat(parts[1]);
             let horn = parseFloat(parts[2]);
             let park = parseFloat(parts[3]);
-
-            naklonX = Math.constrain(naklonX, -1023, 1023);
-            naklonY = Math.constrain(naklonY, -1023, 1023);
-            let speed = Math.map(naklonX, -1023, 1023, -256, 256);
-            let turn = Math.map(naklonY, -1023, 1023, -256, 256);
 
             let leftMotorSpeed = speed - turn;
             let rightMotorSpeed = speed + turn;
@@ -107,6 +111,10 @@ radio.onReceivedString(function (receivedString: string) {
                 };
             };
         };
+    }else{
+        PCAmotor.MotorStopAll();
+        basic.showString("!", 0);
+        music.playTone(1000, 0)
     };
 });
 
@@ -114,49 +122,84 @@ type IRC = {
     l: DigitalPin,
     c: DigitalPin,
     r: DigitalPin
-}
+};
 
 const IR: IRC = {
     l: DigitalPin.P14,
     c: DigitalPin.P15,
     r: DigitalPin.P13
-}
+};
 
 pins.setPull(IR.l, PinPullMode.PullNone);
 pins.setPull(IR.c, PinPullMode.PullNone);
 pins.setPull(IR.r, PinPullMode.PullNone);
 
+function drive(left: number, right: number) {
+    PCAmotor.MotorRun(PCAmotor.Motors.M1, left);
+    PCAmotor.MotorRun(PCAmotor.Motors.M4, right)
+};
+
 basic.forever(function () {
     if (autoMode) {
-        let dataL: number;
-        let dataC: number;
-        let dataR: number;
 
-        dataL = pins.digitalReadPin(IR.l);
-        dataC = pins.digitalReadPin(IR.c);
-        dataR = pins.digitalReadPin(IR.r);
+        console.log(lastTilt);
+        let dataL: number = pins.digitalReadPin(IR.l);
+        let dataC: number = pins.digitalReadPin(IR.c);
+        let dataR: number = pins.digitalReadPin(IR.r);
+        
+        
+        
 
-        if (dataL == 1 && dataC == 0 && dataR == 1) {
-            PCAmotor.MotorRun(PCAmotor.Motors.M1, 200)
-            PCAmotor.MotorRun(PCAmotor.Motors.M4, -200)
-        }
-        else if (dataL == 0 && dataC == 0 && dataR == 1) {
-            PCAmotor.MotorRun(PCAmotor.Motors.M1, 75)
-            PCAmotor.MotorRun(PCAmotor.Motors.M4, -200)
+        let allDir: boolean = false;
+        if (dataL == 1 && dataC == 1 && dataR == 1){
+            allDir = true;
+        }else{
+            allDir = false;
+        };
+
+//Normální trasa
+        if (dataL == 0 && dataC == 1 && dataR == 0) {
+            drive(80, -120);
         }
         else if (dataL == 1 && dataC == 0 && dataR == 0) {
-            PCAmotor.MotorRun(PCAmotor.Motors.M1, 200)
-            PCAmotor.MotorRun(PCAmotor.Motors.M4, -75)
+            drive(0, -80);
         }
-        else {
-            PCAmotor.MotorStopAll()
+        else if (dataL == 1 && dataC == 1 && dataR == 0) {
+            drive(40, -80);
         }
-        basic.pause(20)
-    }
+        else if (dataL == 0 && dataC == 0 && dataR == 1) {
+            drive(80, 0);
+        } 
+        else if (dataL == 0 && dataC == 1 && dataR == 1) {
+            drive(80, -40);
+        } else if (dataL == 0 && dataC == 0 && dataR == 0){
+            drive(80, -120);
+        }else {
+            PCAmotor.MotorStopAll();
+        };
+
+//Křižovatka
+        if (!turning && allDir && lastTilt < -50) {
+            turning = true;
+            drive(-100, -150);
+            basic.pause(500);
+            turning = false
+        } 
+         else if (!turning && allDir && lastTilt > 50){
+             turning = true
+            drive(150, 100);
+            basic.pause(500);
+            turning = false
+        }
+         else if (!turning && allDir){
+            drive(80, -120)
+        };
+        basic.pause(5);
+    };
 
     if (parkSensor) {
         let distance = Sensors.ping(DigitalPin.P2, DigitalPin.P1, 500)
-        basic.pause(30);
+        basic.pause(10);
 
         if (distance <= 40 && distance > 35) {
             music.playTone(400, 250);
@@ -181,3 +224,4 @@ basic.forever(function () {
         };
     };
 });
+
