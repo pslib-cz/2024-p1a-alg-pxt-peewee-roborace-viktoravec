@@ -1,11 +1,19 @@
 let ready: boolean = false;
+
 let parkSensor: boolean = false;
+
 let normalMode: boolean = true;
 let autoMode: boolean = false;
 let autoSong: boolean = true;
 let lastAutoDrive: number = 0;
+
 let lastTilt: number = 0
 let turning: boolean = false;
+
+let maxSpeed: number = 255;
+
+let correctionMode: boolean = false;
+let correctDir: number = 0;
 
 radio.on();
 radio.setFrequencyBand(50);
@@ -140,11 +148,6 @@ function drive(left: number, right: number) {
     PCAmotor.MotorRun(PCAmotor.Motors.M4, right)
 };
 
-let maxSpeed: number = 255;
-
-let correctionMode: boolean = false;
-let correctDir: number = 0;
-
 basic.forever(function () {
     if (autoMode) {
         let dataL: number = pins.digitalReadPin(IR.l);
@@ -152,6 +155,7 @@ basic.forever(function () {
         let dataR: number = pins.digitalReadPin(IR.r);
         
         let allDir: boolean = false;
+
         if (dataL == 1 && dataC == 1 && dataR == 1){
             allDir = true;
         }else{
@@ -166,59 +170,63 @@ basic.forever(function () {
         if(correctionMode){
             if(correctDir == -1){
                 drive(0, -maxSpeed);
-                basic.pause(5);
-                drive(0, -120);
+                basic.pause(20);
+                drive(40, -100);
             }else if(correctDir == 1){
                 drive(maxSpeed, 0);
-                basic.pause(5);
-                drive(120, 0)
+                basic.pause(20);
+                drive(100, -40)
             }
-        }else{
+        }
+        else{
 
         //Normální trasa
         if (dataL == 0 && dataC == 1 && dataR == 0) {
-            drive(60, -100);
+            drive(70, -90);
         }
         else if (dataL == 1 && dataC == 0 && dataR == 0) {
-            //drive(0, -80)
+            PCAmotor.MotorStopAll();
             correctionMode = true;
             correctDir = -1
-        }
-        else if (dataL == 1 && dataC == 1 && dataR == 0) {
-            drive(80, -120);
+            basic.pause(50); 
         }
         else if (dataL == 0 && dataC == 0 && dataR == 1) {
-            //drive(80, 0);
+            PCAmotor.MotorStopAll();
             correctionMode = true;
             correctDir = 1
-        } 
+            basic.pause(50); 
+        }
+        else if (dataL == 1 && dataC == 1 && dataR == 0) {
+            drive(0, -100);
+        }
         else if (dataL == 0 && dataC == 1 && dataR == 1) {
-            drive(120, -80);
+            drive(100, 0);
         } 
         else if (dataL == 0 && dataC == 0 && dataR == 0){
-            drive(80, -120);
+            drive(70, -90);
         }else {
             PCAmotor.MotorStopAll();
-        }
+        };
     };
 
         //Křižovatka
         if (!turning && allDir && lastTilt < -50) {
             turning = true;
             drive(-80, -150);
-            basic.pause(500);
+            basic.pause(400);
             turning = false
         } 
          else if (!turning && allDir && lastTilt > 50){
              turning = true
-            drive(150, 80);
-            basic.pause(500);
+            drive(150, 90);
+            basic.pause(400);
             turning = false
         }
          else if (!turning && allDir){
-            drive(60, -100)
+            drive(70, -90)
+            basic.pause(200);
         };
-        basic.pause(5);
+        basic.pause(2);
     };
 
 //Park senzor
