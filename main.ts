@@ -11,13 +11,14 @@ radio.on();
 radio.setFrequencyBand(50);
 radio.setGroup(128);
 
+//Normal mode
 radio.onReceivedString(function (receivedString: string) {
-    let parts = receivedString.split(",")
-
     if (receivedString == "start") {
         ready = true
         return;
     };
+
+    let parts = receivedString.split(",")
 
     if (parts.length === 5) {
         let autoDrive = parseFloat(parts[4]);
@@ -56,11 +57,10 @@ radio.onReceivedString(function (receivedString: string) {
                 basic.pause(100);
                 basic.clearScreen()
             }
-
             autoSong = !autoSong;
             autoMode = !autoMode;
             normalMode = !normalMode;
-        }
+        };
 
         lastAutoDrive = autoDrive;
 
@@ -118,6 +118,7 @@ radio.onReceivedString(function (receivedString: string) {
     };
 });
 
+//Auto mode
 type IRC = {
     l: DigitalPin,
     c: DigitalPin,
@@ -139,17 +140,17 @@ function drive(left: number, right: number) {
     PCAmotor.MotorRun(PCAmotor.Motors.M4, right)
 };
 
+let maxSpeed: number = 255;
+
+let correctionMode: boolean = false;
+let correctDir: number = 0;
+
 basic.forever(function () {
     if (autoMode) {
-
-        console.log(lastTilt);
         let dataL: number = pins.digitalReadPin(IR.l);
         let dataC: number = pins.digitalReadPin(IR.c);
         let dataR: number = pins.digitalReadPin(IR.r);
         
-        
-        
-
         let allDir: boolean = false;
         if (dataL == 1 && dataC == 1 && dataR == 1){
             allDir = true;
@@ -157,46 +158,70 @@ basic.forever(function () {
             allDir = false;
         };
 
-//Normální trasa
+        if(dataC == 1){
+            correctionMode = false;
+            correctDir = 0;
+        };
+
+        if(correctionMode){
+            if(correctDir == -1){
+                drive(0, -maxSpeed);
+                basic.pause(5);
+                drive(0, -120);
+            }else if(correctDir == 1){
+                drive(maxSpeed, 0);
+                basic.pause(5);
+                drive(120, 0)
+            }
+        }else{
+
+        //Normální trasa
         if (dataL == 0 && dataC == 1 && dataR == 0) {
-            drive(80, -120);
+            drive(60, -100);
         }
         else if (dataL == 1 && dataC == 0 && dataR == 0) {
-            drive(0, -80);
+            //drive(0, -80)
+            correctionMode = true;
+            correctDir = -1
         }
         else if (dataL == 1 && dataC == 1 && dataR == 0) {
-            drive(40, -80);
+            drive(80, -120);
         }
         else if (dataL == 0 && dataC == 0 && dataR == 1) {
-            drive(80, 0);
+            //drive(80, 0);
+            correctionMode = true;
+            correctDir = 1
         } 
         else if (dataL == 0 && dataC == 1 && dataR == 1) {
-            drive(80, -40);
-        } else if (dataL == 0 && dataC == 0 && dataR == 0){
+            drive(120, -80);
+        } 
+        else if (dataL == 0 && dataC == 0 && dataR == 0){
             drive(80, -120);
         }else {
             PCAmotor.MotorStopAll();
-        };
+        }
+    };
 
-//Křižovatka
+        //Křižovatka
         if (!turning && allDir && lastTilt < -50) {
             turning = true;
-            drive(-100, -150);
+            drive(-80, -150);
             basic.pause(500);
             turning = false
         } 
          else if (!turning && allDir && lastTilt > 50){
              turning = true
-            drive(150, 100);
+            drive(150, 80);
             basic.pause(500);
             turning = false
         }
          else if (!turning && allDir){
-            drive(80, -120)
+            drive(60, -100)
         };
         basic.pause(5);
     };
 
+//Park senzor
     if (parkSensor) {
         let distance = Sensors.ping(DigitalPin.P2, DigitalPin.P1, 500)
         basic.pause(10);
@@ -224,6 +249,3 @@ basic.forever(function () {
         };
     };
 });
-
-
-
