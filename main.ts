@@ -169,13 +169,12 @@ basic.forever(function () {
 
         if(correctionMode){
             if(correctDir == -1){
+                //Nakopnutí pro slabší motor
                 drive(0, -maxSpeed);
                 basic.pause(20);
-                drive(40, -100);
+                drive(50, -90);
             }else if(correctDir == 1){
-                drive(maxSpeed, 0);
-                basic.pause(20);
-                drive(100, -40)
+                drive(90, -50)
             }
         }
         else{
@@ -257,3 +256,4 @@ basic.forever(function () {
         };
     };
 });
+
