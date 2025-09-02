@@ -130,6 +130,7 @@ const IR: IRC = {
     r: DigitalPin.P13
 };
 
+//Odpojení odporů u čidel
 pins.setPull(IR.l, PinPullMode.PullNone);
 pins.setPull(IR.c, PinPullMode.PullNone);
 pins.setPull(IR.r, PinPullMode.PullNone);
